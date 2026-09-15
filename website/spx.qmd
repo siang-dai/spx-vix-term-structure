@@ -1,0 +1,239 @@
+---
+title: ""
+page-layout: full
+---
+
+## SPX VIX-style term structure
+
+This page uses Cboe SPX/SPXW end-of-day option quotes to calculate a VIX-style implied-volatility estimate for every usable expiration. The calculation follows the single-term structure of the Cboe VIX methodology, but these values are research estimates and are **not official Cboe indices**.
+
+```{=html}
+<div class="project-card spx-interactive-card">
+  <div class="spx-toolbar">
+    <p id="spx-vix-status">Loading SPX VIX-style term-structure history…</p>
+    <label class="spx-horizon-label">
+      Horizon
+      <select id="spx-horizon">
+        <option value="30">1M</option>
+        <option value="90">3M</option>
+        <option value="180">6M</option>
+        <option value="365" selected>1Y</option>
+        <option value="730">2Y</option>
+        <option value="all">All</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="spx-vix-term-chart"></div>
+
+  <div class="spx-slider-wrap">
+    <input id="spx-date-slider"
+           type="range"
+           min="0"
+           max="0"
+           step="1"
+           value="0"
+           disabled
+           aria-label="Select SPX term-structure trading date">
+    <div class="spx-slider-labels">
+      <span id="spx-start-date"></span>
+      <strong id="spx-selected-date"></strong>
+      <span id="spx-end-date"></span>
+    </div>
+  </div>
+</div>
+```
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@4.1.0/plotly.min.js"></script>
+
+<script>
+(() => {
+  const user = "siang-dai";
+  const repo = "spx-vix-term-structure";
+  const stamp = Date.now();
+  const rawRoot = `https://raw.githubusercontent.com/${user}/${repo}/main`;
+  const rawData = `${rawRoot}/data`;
+  const rawOutput = `${rawRoot}/output`;
+
+  const chart = document.getElementById("spx-vix-term-chart");
+  const status = document.getElementById("spx-vix-status");
+  const slider = document.getElementById("spx-date-slider");
+  const horizon = document.getElementById("spx-horizon");
+  const startLabel = document.getElementById("spx-start-date");
+  const selectedLabel = document.getElementById("spx-selected-date");
+  const endLabel = document.getElementById("spx-end-date");
+
+  if (!chart || !status || !slider || !horizon || !startLabel || !selectedLabel || !endLabel) {
+    console.error("SPX interactive DOM elements are missing.");
+    return;
+  }
+
+  let allRows = [];
+  let recentDates = [];
+
+  function parseCsv(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const headers = lines[0].split(",");
+    return lines.slice(1).map(line => {
+      const values = line.split(",");
+      const row = Object.fromEntries(headers.map((header, i) => [header, values[i] ?? ""]));
+      return {
+        Date: (row.Date || "").trim(),
+        Root: (row.Root || "").trim(),
+        Settlement: (row.Settlement || "").trim(),
+        Expiration_Date: (row.Expiration_Date || "").trim(),
+        Days_to_Exp: Number(row.Days_to_Exp),
+        Hours_to_Exp: Number(row.Hours_to_Exp),
+        Forward: Number(row.Forward),
+        K0: Number(row.K0),
+        Risk_Free_Rate: Number(row.Risk_Free_Rate),
+        VIX: Number(row.VIX),
+        Options_Used: Number(row.Options_Used)
+      };
+    }).filter(row => row.Date && Number.isFinite(row.Days_to_Exp) && row.Days_to_Exp > 0 && Number.isFinite(row.VIX));
+  }
+
+  function isoDate(value) {
+    return new Date(`${value}T00:00:00Z`);
+  }
+
+  function renderTermStructure(date) {
+    const daily = allRows
+      .filter(row => row.Date === date)
+      .sort((a, b) => a.Days_to_Exp - b.Days_to_Exp);
+
+    if (!daily.length) return;
+
+    const selectedHorizon = horizon.value;
+    const visibleDays = selectedHorizon === "all"
+      ? Infinity
+      : Number(selectedHorizon);
+    const visible = daily.filter(row => row.Days_to_Exp <= visibleDays);
+    const bodyColor = getComputedStyle(document.body).color;
+
+    const trace = {
+      type: "scatter",
+      mode: "lines+markers",
+      x: daily.map(row => row.Days_to_Exp),
+      y: daily.map(row => row.VIX),
+      text: daily.map(row => `${row.Root} ${row.Expiration_Date}`),
+      customdata: daily.map(row => [
+        row.Root,
+        row.Settlement,
+        row.Expiration_Date,
+        row.Forward,
+        row.K0,
+        row.Risk_Free_Rate * 100,
+        row.Options_Used,
+        row.Hours_to_Exp
+      ]),
+      hovertemplate:
+        "<b>%{text}</b>" +
+        "<br>Settlement: %{customdata[1]}" +
+        "<br>Days to expiration: %{x:.2f}" +
+        "<br>Hours to expiration: %{customdata[7]:.1f}" +
+        "<br>VIX-style IV: %{y:.2f}%" +
+        "<br>Implied forward: %{customdata[3]:,.2f}" +
+        "<br>K0: %{customdata[4]:,.2f}" +
+        "<br>Risk-free rate: %{customdata[5]:.3f}%" +
+        "<br>Options used: %{customdata[6]:.0f}" +
+        "<extra></extra>",
+      line: { width: 2.2 },
+      marker: { size: 7 }
+    };
+
+    const maxVisible = selectedHorizon === "all"
+      ? Math.max(...daily.map(row => row.Days_to_Exp))
+      : Math.min(Number(selectedHorizon), Math.max(...daily.map(row => row.Days_to_Exp)));
+
+    const layout = {
+      title: {
+        text: `SPX VIX-style Term Structure — ${date}`,
+        x: 0.5,
+        font: { size: 20 }
+      },
+      xaxis: {
+        title: "Days to expiration",
+        range: [0, Math.max(7, maxVisible * 1.03)],
+        gridcolor: "rgba(127,127,127,0.18)",
+        automargin: true
+      },
+      yaxis: {
+        title: "Annualized implied volatility (%)",
+        gridcolor: "rgba(127,127,127,0.18)",
+        automargin: true
+      },
+      margin: { l: 75, r: 35, t: 60, b: 55 },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: bodyColor, size: 13 },
+      hovermode: "closest",
+      showlegend: false,
+      autosize: true
+    };
+
+    Plotly.react(chart, [trace], layout, {
+      responsive: true,
+      displaylogo: false,
+      scrollZoom: true
+    });
+
+    selectedLabel.textContent = date;
+    status.textContent =
+      `Trading date: ${date} · ${daily.length} usable expirations` +
+      (selectedHorizon === "all" ? " · showing all maturities." : ` · showing ≤ ${selectedHorizon} DTE (${visible.length} points).`);
+  }
+
+  function updateFromSlider() {
+    const date = recentDates[Number(slider.value)];
+    if (date) renderTermStructure(date);
+  }
+
+  fetch(`${rawData}/vix_term_structure_history.csv?t=${stamp}`)
+    .then(response => {
+      if (!response.ok) throw new Error("SPX history unavailable");
+      return response.text();
+    })
+    .then(text => {
+      allRows = parseCsv(text);
+      const allDates = [...new Set(allRows.map(row => row.Date))].sort();
+      if (!allDates.length) throw new Error("No SPX history rows yet");
+
+      const latestDate = allDates[allDates.length - 1];
+      const cutoff = isoDate(latestDate);
+      cutoff.setUTCDate(cutoff.getUTCDate() - 29);
+      recentDates = allDates.filter(date => isoDate(date) >= cutoff);
+
+      slider.min = "0";
+      slider.max = String(recentDates.length - 1);
+      slider.value = String(recentDates.length - 1);
+      slider.disabled = false;
+      startLabel.textContent = recentDates[0];
+      endLabel.textContent = recentDates[recentDates.length - 1];
+
+      slider.addEventListener("input", updateFromSlider);
+      horizon.addEventListener("change", updateFromSlider);
+      updateFromSlider();
+    })
+    .catch(error => {
+      console.error(error);
+      status.textContent = "Interactive history is not available yet; showing the latest static chart if present.";
+      chart.innerHTML = `
+        <img
+          src="${rawOutput}/latest_term_structure.png?t=${stamp}"
+          alt="Latest SPX VIX-style term structure"
+          style="width:100%; max-width:1200px;"
+        >
+      `;
+      slider.disabled = true;
+    });
+})();
+</script>
+
+The source data is the Cboe Proprietary Index Marking Prices file. The repository stores derived term-structure values rather than publishing the raw Cboe file. Risk-free rates are based on the U.S. Treasury CMT curve.
+
+## Related
+
+- [Cboe Proprietary Index Marking Prices](https://www.cboe.com/us/options/market_statistics/proprietary_index_marking_prices/)
+- [Cboe VIX methodology](https://cdn.cboe.com/resources/indices/Cboe_Volatility_Index_Mathematics_Methodology.pdf)
+- [Source repository](https://github.com/siang-dai/spx-vix-term-structure)

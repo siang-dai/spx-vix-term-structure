@@ -1,0 +1,17 @@
+{
+  "as_of_date": "2026-09-14",
+  "generated_at_chicago": "2026-09-14T19:55:20-05:00",
+  "timezone": "America/Chicago",
+  "number_of_expirations": 60,
+  "minimum_dte": 0.989583,
+  "maximum_dte": 1921.760417,
+  "roots": [
+    "SPX",
+    "SPXW"
+  ],
+  "treasury_rate_date": "2026-09-14",
+  "treasury_source": "U.S. Treasury CMT",
+  "option_data_source": "https://cdn.cboe.com/resources/marking_prices/eod_marking_prices_late_list.csv",
+  "official_index": false,
+  "method_note": "VIX-style single-term variance by expiration using Cboe end-of-day quotes, two-consecutive-zero-bid truncation, and interpolated U.S. Treasury CMT rates."
+}

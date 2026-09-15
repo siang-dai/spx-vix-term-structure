@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.DS_Store
+
+# Cboe raw files are downloaded for local debugging only.
+# Do not publish/redistribute them without checking the applicable Cboe data terms.
+data/raw/*.csv
+!data/raw/.gitkeep

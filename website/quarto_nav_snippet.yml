@@ -1,0 +1,4 @@
+# In siang-dai.github.io/_quarto.yml, add this directly after TXO Observatory:
+#
+#       - href: spx.qmd
+#         text: SPX Observatory
