@@ -1,10 +1,10 @@
 {
-  "as_of_date": "2026-11-10",
-  "generated_at_chicago": "2026-11-11T09:15:49-06:00",
+  "as_of_date": "2026-11-11",
+  "generated_at_chicago": "2026-11-11T16:06:35-06:00",
   "timezone": "America/Chicago",
   "number_of_expirations": 61,
   "minimum_dte": 0.989583,
-  "maximum_dte": 1864.71875,
+  "maximum_dte": 1863.71875,
   "roots": [
     "SPX",
     "SPXO",
