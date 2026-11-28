@@ -1,16 +1,16 @@
 {
-  "as_of_date": "2026-11-25",
-  "generated_at_chicago": "2026-11-27T13:59:07-06:00",
+  "as_of_date": "2026-11-27",
+  "generated_at_chicago": "2026-11-27T20:43:31-06:00",
   "timezone": "America/Chicago",
   "number_of_expirations": 59,
-  "minimum_dte": 1.989583,
-  "maximum_dte": 1849.71875,
+  "minimum_dte": 2.989583,
+  "maximum_dte": 1847.71875,
   "roots": [
     "SPX",
     "SPXO",
     "SPXW"
   ],
-  "treasury_rate_date": "2026-11-25",
+  "treasury_rate_date": "2026-11-27",
   "treasury_source": "U.S. Treasury CMT",
   "option_data_source": "https://cdn.cboe.com/resources/marking_prices/eod_marking_prices_late_list.csv",
   "official_index": false,
